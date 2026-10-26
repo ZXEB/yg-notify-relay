@@ -1,0 +1,232 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="color-scheme" content="dark">
+<meta name="theme-color" content="#0e0f12">
+<meta name="referrer" content="same-origin">
+<title>YG 消息转发中继</title>
+<link rel="stylesheet" href="./style.css">
+</head>
+<body>
+<!-- 纵深光晕：纯 CSS 径向渐变，不使用任何图片资源 -->
+<div class="bg-glow" aria-hidden="true"></div>
+
+<!-- ============ 登录视图 ============ -->
+<main id="loginView" class="login-view" hidden>
+  <section id="loginCard" class="glass login-card">
+    <span class="brand-mark" aria-hidden="true">
+      <svg viewBox="0 0 48 48" width="48" height="48">
+        <defs>
+          <linearGradient id="brandGrad" x1="0" y1="0" x2="1" y2="1">
+            <stop offset="0" stop-color="#5b9bff"></stop>
+            <stop offset="1" stop-color="#2f7bff"></stop>
+          </linearGradient>
+        </defs>
+        <rect x="1" y="1" width="46" height="46" rx="14" fill="url(#brandGrad)"></rect>
+        <path d="M15 20h13a4 4 0 0 1 4 4v9l5-4V14a3 3 0 0 0-3-3H18a3 3 0 0 0-3 3v6Z"
+              fill="rgba(255,255,255,.92)"></path>
+        <path d="M33 28H20a4 4 0 0 1-4-4v-9l-5 4v15a3 3 0 0 0 3 3h16a3 3 0 0 0 3-3v-6Z"
+              fill="rgba(255,255,255,.45)"></path>
+      </svg>
+    </span>
+    <h1 class="login-title">YG 消息转发</h1>
+    <p class="login-sub">输入网页密码</p>
+    <form id="loginForm" class="login-form" novalidate>
+      <input id="loginPassword" class="text-input" type="password" name="password"
+             autocomplete="current-password" placeholder="网页密码" aria-label="网页密码"
+             autofocus required>
+      <p id="loginError" class="login-error" role="alert" aria-live="polite"></p>
+      <button id="loginBtn" class="primary-btn" type="submit">
+        <span class="spinner" aria-hidden="true"></span>
+        <span id="loginBtnLabel">登录</span>
+      </button>
+    </form>
+  </section>
+</main>
+
+<!-- ============ 主视图 ============ -->
+<div id="appView" class="app-view" hidden>
+  <header class="page-head">
+    <h1 id="pageTitle" class="page-title">消息</h1>
+    <span id="statusWrap" class="status" aria-live="polite">
+      <span class="status-dot" aria-hidden="true"></span>
+      <span id="statusText">已连接</span>
+    </span>
+  </header>
+
+  <!-- 消息 tab -->
+  <section id="paneMessages" class="pane">
+    <div class="search-wrap">
+      <svg class="search-icon" viewBox="0 0 24 24" aria-hidden="true">
+        <circle cx="11" cy="11" r="6.5" fill="none" stroke="currentColor" stroke-width="1.8"></circle>
+        <path d="M16 16l4 4" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"></path>
+      </svg>
+      <input id="searchInput" class="search-input" type="search" autocomplete="off"
+             placeholder="搜索标题、内容、应用" aria-label="搜索消息">
+    </div>
+
+    <div id="appChips" class="chips-row" role="group" aria-label="按应用筛选"></div>
+    <div id="deviceChips" class="chips-row" role="group" aria-label="按设备筛选"></div>
+
+    <div id="eventList" class="event-list" aria-live="polite"></div>
+
+    <div id="emptyState" class="empty-state" hidden>
+      <svg class="empty-art" viewBox="0 0 200 140" aria-hidden="true">
+        <defs>
+          <linearGradient id="emptyGrad" x1="0" y1="0" x2="1" y2="1">
+            <stop offset="0" stop-color="#2f7bff" stop-opacity=".5"></stop>
+            <stop offset="1" stop-color="#bf5af2" stop-opacity=".14"></stop>
+          </linearGradient>
+        </defs>
+        <rect x="26" y="22" width="148" height="92" rx="22" fill="url(#emptyGrad)"></rect>
+        <rect x="40" y="34" width="120" height="68" rx="16" fill="rgba(255,255,255,.05)"
+              stroke="rgba(255,255,255,.14)" stroke-width="1.2"></rect>
+        <path d="M54 52h58M54 66h80M54 80h42" stroke="rgba(255,255,255,.32)" stroke-width="4"
+              stroke-linecap="round"></path>
+        <circle cx="152" cy="34" r="11" fill="#2f7bff"></circle>
+        <path d="M147 34.4l3.2 3.2 5.8-6.4" fill="none" stroke="#fff" stroke-width="2.4"
+              stroke-linecap="round" stroke-linejoin="round"></path>
+      </svg>
+      <p class="empty-title">还没有消息</p>
+      <p class="empty-desc">在手机 App 里填写服务器地址和接入令牌，通知就会实时出现在这里。</p>
+    </div>
+
+    <p id="listStatus" class="list-status" role="status" aria-live="polite"></p>
+  </section>
+
+  <!-- 设备 tab -->
+  <section id="paneDevices" class="pane" hidden>
+    <div id="deviceList" class="card-stack"></div>
+  </section>
+
+  <!-- 设置 tab -->
+  <section id="paneSettings" class="pane" hidden>
+    <section class="glass setting-card">
+      <h2 class="card-title">导出</h2>
+      <p class="card-body">把已接收的消息导出成文件，便于离线留存或做二次分析。</p>
+      <div class="btn-row">
+        <button id="exportJsonl" class="ghost-btn" type="button">导出 JSONL</button>
+        <button id="exportJson" class="ghost-btn" type="button">导出 JSON</button>
+      </div>
+    </section>
+
+    <section class="glass setting-card">
+      <h2 class="card-title">危险操作</h2>
+      <p class="card-body">清空会永久删除服务器上保存的全部消息，删除后无法恢复。</p>
+      <div class="btn-row">
+        <button id="clearOpen" class="danger-btn" type="button">清空全部消息</button>
+      </div>
+    </section>
+
+    <section class="glass setting-card">
+      <h2 class="card-title">接入令牌</h2>
+      <p class="card-body">
+        手机 App 用这个令牌把通知转发到服务器。服务器不保存旧令牌明文，所以这里每点一次「显示」
+        都会生成一枚新令牌。
+      </p>
+      <div class="token-row">
+        <code id="tokenValue" class="token-value is-masked">未生成</code>
+        <span class="token-actions">
+          <button id="tokenCopy" class="ghost-btn is-small" type="button" disabled>复制</button>
+          <button id="tokenToggle" class="ghost-btn is-small" type="button">显示</button>
+        </span>
+      </div>
+      <p id="tokenWarn" class="warn-note" hidden>旧令牌立即失效，需要回到手机 App 重新填写。</p>
+    </section>
+
+    <section class="glass setting-card">
+      <h2 class="card-title">会话</h2>
+      <p class="card-body">退出后需要重新输入网页密码才能查看消息。</p>
+      <div class="btn-row">
+        <button id="logoutBtn" class="ghost-btn" type="button">退出登录</button>
+      </div>
+    </section>
+
+    <section class="glass setting-card">
+      <h2 class="card-title">关于</h2>
+      <p class="card-body">YG Relay · Python stdlib 服务端</p>
+      <div class="btn-row">
+        <button id="healthBtn" class="ghost-btn" type="button">健康检查</button>
+      </div>
+      <p id="healthOut" class="hint" role="status" aria-live="polite"></p>
+    </section>
+  </section>
+</div>
+
+<!-- 底部悬浮玻璃 pill 导航 -->
+<nav id="tabBar" class="tab-bar" role="tablist" aria-label="主导航" hidden>
+  <span class="nav-pill" aria-hidden="true"></span>
+  <button class="tab-btn is-active" type="button" data-view="messages" role="tab"
+          aria-selected="true" aria-label="消息">
+    <svg viewBox="0 0 24 24" width="21" height="21" aria-hidden="true">
+      <path d="M20.5 11.6a8 8 0 0 1-8 8H4.2l2.3-3.4A8 8 0 1 1 20.5 11.6Z" fill="none"
+            stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"></path>
+      <path d="M9 11.6h.01M12.4 11.6h.01M15.8 11.6h.01" stroke="currentColor" stroke-width="2.2"
+            stroke-linecap="round"></path>
+    </svg>
+    <span>消息</span>
+  </button>
+  <button class="tab-btn" type="button" data-view="devices" role="tab"
+          aria-selected="false" aria-label="设备">
+    <svg viewBox="0 0 24 24" width="21" height="21" aria-hidden="true">
+      <rect x="6.5" y="2.5" width="11" height="19" rx="3" fill="none" stroke="currentColor"
+            stroke-width="1.8"></rect>
+      <path d="M10.6 18.6h2.8" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"></path>
+    </svg>
+    <span>设备</span>
+  </button>
+  <button class="tab-btn" type="button" data-view="settings" role="tab"
+          aria-selected="false" aria-label="设置">
+    <svg viewBox="0 0 24 24" width="21" height="21" aria-hidden="true">
+      <path d="M4 8h6.4M15.6 8H20M4 16h3.4M12.6 16H20" fill="none" stroke="currentColor"
+            stroke-width="1.8" stroke-linecap="round"></path>
+      <circle cx="13" cy="8" r="2.6" fill="none" stroke="currentColor" stroke-width="1.8"></circle>
+      <circle cx="10" cy="16" r="2.6" fill="none" stroke="currentColor" stroke-width="1.8"></circle>
+    </svg>
+    <span>设置</span>
+  </button>
+</nav>
+
+<!-- 原始 JSON：移动端为底部抽屉，宽屏为居中面板 -->
+<div id="rawScrim" class="scrim"></div>
+<section id="rawDrawer" class="drawer" role="dialog" aria-modal="true" aria-labelledby="rawTitle"
+         aria-hidden="true">
+  <header class="drawer-head">
+    <span class="drawer-titles">
+      <h2 id="rawTitle" class="card-title">原始 JSON</h2>
+      <span id="rawMeta" class="drawer-meta"></span>
+    </span>
+    <button id="rawClose" class="icon-btn" type="button" aria-label="关闭">
+      <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true">
+        <path d="M6 6l12 12M18 6L6 18" stroke="currentColor" stroke-width="1.9"
+              stroke-linecap="round"></path>
+      </svg>
+    </button>
+  </header>
+  <pre id="rawJson" class="raw-json"></pre>
+  <footer class="drawer-foot">
+    <button id="rawCopy" class="ghost-btn" type="button">复制 JSON</button>
+  </footer>
+</section>
+
+<!-- 清空确认 -->
+<div id="clearScrim" class="scrim scrim--modal"></div>
+<section id="clearDialog" class="modal" role="dialog" aria-modal="true" aria-labelledby="clearTitle"
+         aria-hidden="true">
+  <h2 id="clearTitle" class="card-title">确认清空全部消息</h2>
+  <p class="card-body">该操作不可撤销。请输入 <strong>ALL</strong> 后才能点击确认。</p>
+  <input id="clearInput" class="text-input" type="text" autocomplete="off" spellcheck="false"
+         placeholder="输入 ALL">
+  <div class="btn-row">
+    <button id="clearCancel" class="ghost-btn" type="button">取消</button>
+    <button id="clearConfirm" class="danger-btn" type="button" disabled>确认清空</button>
+  </div>
+</section>
+
+<div id="toast" class="toast" role="status" aria-live="polite"></div>
+
+<script src="./app.js" defer></script>
+</body>
+</html>

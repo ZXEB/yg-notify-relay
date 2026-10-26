@@ -1,0 +1,117 @@
+name: Build Android APK
+
+on:
+  push:
+    branches: [main]
+    tags: ["v*"]
+    paths:
+      - "android/**"
+      - ".github/workflows/android.yml"
+  pull_request:
+    paths:
+      - "android/**"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: android-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: android
+    env:
+      KEYSTORE_BASE64: ${{ secrets.KEYSTORE_BASE64 }}
+      KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
+      KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
+      KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
+      VERSION_CODE: ${{ github.run_number }}
+      # versionName 由 tag 推导；非 tag 的构建给一个一眼看得出是开发版的版本名。
+      VERSION_NAME: "${{ startsWith(github.ref, 'refs/tags/v') && github.ref_name || format('0.0.{0}-dev', github.run_number) }}"
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+
+      - name: Setup JDK 21
+        uses: actions/setup-java@v5
+        with:
+          distribution: "zulu"
+          java-version: "21"
+
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v6
+
+      - name: Make gradlew executable
+        run: chmod +x ./gradlew
+
+      - name: Unit tests
+        run: ./gradlew :app:testDebugUnitTest --stacktrace
+
+      # 四个签名 secret 齐了就出 release（已混淆已签名）；缺任一个只出 debug，
+      # 保证没有凭据的 fork / PR 也能绿。
+      - name: Build APKs
+        run: |
+          if [ -n "$KEYSTORE_BASE64" ]; then
+            echo "签名密钥已配置 -> assembleRelease"
+            ./gradlew :app:assembleRelease --stacktrace
+          else
+            echo "::warning::未配置签名密钥，仅构建 debug APK"
+            ./gradlew :app:assembleDebug --stacktrace
+          fi
+
+      - name: Verify release APK is signed
+        run: |
+          if [ -n "$KEYSTORE_BASE64" ]; then
+            APK=$(ls app/build/outputs/apk/release/*.apk | head -n 1)
+            echo "checking $APK"
+            APKSIGNER=$(ls "$ANDROID_HOME"/build-tools/*/apksigner 2>/dev/null | sort -V | tail -n 1)
+            if [ -n "$APKSIGNER" ]; then
+              "$APKSIGNER" verify --verbose "$APK"
+            else
+              echo "::error::apksigner not found"
+              exit 1
+            fi
+          fi
+
+      - name: Collect APKs
+        run: |
+          mkdir -p out
+          found=0
+          for f in app/build/outputs/apk/release/*.apk app/build/outputs/apk/debug/*.apk; do
+            if [ -f "$f" ]; then
+              cp "$f" "out/$(basename "$f")"
+              found=1
+            fi
+          done
+          if [ "$found" -eq 0 ]; then
+            echo "::error::No APK produced"
+            exit 1
+          fi
+          ls -la out
+          # 顺手把包名/版本/SDK 打出来，便于回看这次产物到底是什么
+          AAPT=$(ls "$ANDROID_HOME"/build-tools/*/aapt2 2>/dev/null | sort -V | tail -n 1)
+          if [ -n "$AAPT" ]; then
+            "$AAPT" dump badging out/*.apk | head -n 5 || true
+          fi
+
+      - name: Upload APK artifacts
+        uses: actions/upload-artifact@v7
+        with:
+          name: yg-relay-apk
+          path: android/out/*.apk
+          if-no-files-found: error
+
+      - name: Publish GitHub Release
+        if: startsWith(github.ref, 'refs/tags/v')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: android/out/*.apk
+          generate_release_notes: true
+          draft: false

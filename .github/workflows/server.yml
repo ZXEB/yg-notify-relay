@@ -1,0 +1,93 @@
+name: Server tests
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "server/**"
+      - "docker-compose.yml"
+      - ".github/workflows/server.yml"
+  pull_request:
+    paths:
+      - "server/**"
+  workflow_dispatch:
+
+concurrency:
+  group: server-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  unittest:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python: ["3.9", "3.12"]
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python }}
+
+      - name: Syntax check
+        working-directory: server
+        run: python -m compileall -q serve.py tests
+
+      - name: Unit tests
+        working-directory: server
+        run: python -m unittest discover -s tests -t . -v
+
+  docker:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      # 真实构建并起容器：Dockerfile / entrypoint / healthcheck 任何一处腐坏都会在这里红。
+      - name: Build image
+        run: docker build -t yg-relay:ci ./server
+
+      - name: Run container
+        run: |
+          docker run -d --name yg-relay-ci \
+            -p 18787:8787 \
+            -e YG_PASSWORD=ci-test-password \
+            yg-relay:ci
+          for i in $(seq 1 30); do
+            if curl -fsS http://127.0.0.1:18787/healthz > /tmp/health.json; then
+              cat /tmp/health.json
+              exit 0
+            fi
+            sleep 1
+          done
+          echo "::error::healthz 一直没起来"
+          docker logs yg-relay-ci
+          exit 1
+
+      - name: Login and ingest smoke
+        run: |
+          set -e
+          TOKEN=$(docker exec yg-relay-ci python -c "import json;print(json.load(open('/data/config.json'))['ingest_token'])")
+          echo "token length: ${#TOKEN}"
+
+          curl -fsS -c /tmp/cookies \
+            -H 'Content-Type: application/json' \
+            -d '{"password":"ci-test-password"}' \
+            http://127.0.0.1:18787/api/login
+
+          curl -fsS -b /tmp/cookies \
+            -H "Authorization: Bearer $TOKEN" \
+            -H 'Content-Type: application/json' \
+            -d '{"device":{"id":"ci-device","alias":"CI"},"events":[{"id":"ci-1","app":{"package":"com.ci","label":"CI"},"title":"hello","text":"world","posted_at":1760000000000}]}' \
+            http://127.0.0.1:18787/api/v1/ingest
+
+          curl -fsS -b /tmp/cookies 'http://127.0.0.1:18787/api/events?limit=5' | tee /tmp/events.json
+          grep -q 'ci-1' /tmp/events.json
+
+      - name: Container logs
+        if: always()
+        run: docker logs yg-relay-ci || true
+
+      - name: Stop container
+        if: always()
+        run: docker rm -f yg-relay-ci || true

@@ -1,0 +1,31 @@
+# 本地构建与缓存目录（全部落在本仓库内，不写系统盘）
+.cache/
+data/
+*.db
+*.db-wal
+*.db-shm
+config.json
+
+# Android / Gradle
+android/.gradle/
+android/build/
+android/app/build/
+android/local.properties
+android/.kotlin/
+*.apk
+*.aab
+*.keystore
+*.jks
+*.p12
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+
+# 编辑器 / 系统
+.idea/
+.vscode/
+*.iml
+.DS_Store
+Thumbs.db

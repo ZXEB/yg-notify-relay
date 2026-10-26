@@ -1,0 +1,34 @@
+services:
+  relay:
+    build:
+      context: ./server
+    image: yg-notify-relay:latest
+    container_name: yg-relay
+    restart: unless-stopped
+    ports:
+      - "${YG_PORT:-8787}:8787"
+    environment:
+      YG_PORT: "8787"
+      # 想固定网页密码就取消下面这行（首次启动会按它设置）：
+      # YG_PASSWORD: "换成你自己的密码"
+    volumes:
+      # 默认用命名卷：Docker 会自动把镜像里 /data 的属主（uid 10001）带过来，
+      # 开箱即用不会因为权限写不进去。想直接看/备份数据文件就换成 bind mount：
+      #   - ./data:/data
+      # 并且先在宿主机执行：sudo chown -R 10001:10001 ./data
+      - yg-data:/data
+    healthcheck:
+      test: ["CMD", "python", "-c", "import os,urllib.request;urllib.request.urlopen('http://127.0.0.1:'+os.environ.get('YG_PORT','8787')+'/healthz',timeout=3)"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 5s
+    logging:
+      # 通知正文不进日志，但请求行会积累；给日志设上限，别把 VPS 磁盘撑爆。
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+volumes:
+  yg-data:

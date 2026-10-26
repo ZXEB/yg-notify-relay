@@ -1,0 +1,8 @@
+__pycache__/
+*.pyc
+data/
+tests/
+config.example.json
+run.ps1
+run.sh
+systemd/

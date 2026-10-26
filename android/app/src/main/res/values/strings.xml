@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">YG 转发</string>
+
+    <!-- 通知使用权列表里显示的条目名 -->
+    <string name="service_notification_label">YG 转发 · 通知中继</string>
+
+    <string name="tab_overview">概览</string>
+    <string name="tab_events">消息</string>
+    <string name="tab_settings">设置</string>
+
+    <string name="action_refresh">刷新</string>
+    <string name="action_more">更多</string>
+    <string name="action_send_now">立即上传</string>
+</resources>

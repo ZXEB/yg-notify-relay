@@ -1,0 +1,78 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools">
+
+    <!--
+      miuix-blur 的 AAR 声明 minSdk 33，与本应用一致；显式声明是为了在合并检查里
+      留下可读的意图，而不是靠默认值兜。
+    -->
+    <uses-sdk tools:overrideLibrary="top.yukonga.miuix.kmp.blur" />
+
+    <uses-permission android:name="android.permission.INTERNET" />
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+
+    <!--
+      短信直读是可选功能（默认关闭）。通知监听已经能收到短信通知，
+      这个权限只在用户主动打开「短信直读」时才会被申请与使用。
+    -->
+    <uses-permission android:name="android.permission.RECEIVE_SMS" />
+
+    <!-- 查询桌面上的可启动应用，用于设置页的应用筛选列表（避免 QUERY_ALL_PACKAGES） -->
+    <queries>
+        <intent>
+            <action android:name="android.intent.action.MAIN" />
+            <category android:name="android.intent.category.LAUNCHER" />
+        </intent>
+    </queries>
+
+    <application
+        android:name=".RelayApp"
+        android:allowBackup="false"
+        android:dataExtractionRules="@xml/data_extraction_rules"
+        android:enableOnBackInvokedCallback="true"
+        android:fullBackupContent="@xml/backup_rules"
+        android:icon="@mipmap/ic_launcher"
+        android:label="@string/app_name"
+        android:roundIcon="@mipmap/ic_launcher_round"
+        android:supportsRtl="true"
+        android:theme="@style/Theme.YgRelay"
+        tools:targetApi="34">
+
+        <activity
+            android:name=".MainActivity"
+            android:configChanges="orientation|screenSize|screenLayout|keyboardHidden|uiMode|density|fontScale|layoutDirection|locale|smallestScreenSize|navigation"
+            android:exported="true"
+            android:label="@string/app_name"
+            android:windowSoftInputMode="adjustResize">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity>
+
+        <!--
+          通知监听：这是整个应用的入口。系统在用户授权后绑定此服务，
+          通知到达时回调 onNotificationPosted —— 事件驱动，不需要轮询、不需要常驻连接。
+          exported 必须为 true（系统组件跨进程绑定），并受 BIND_NOTIFICATION_LISTENER_SERVICE 保护。
+        -->
+        <service
+            android:name=".service.RelayNotificationService"
+            android:exported="true"
+            android:label="@string/service_notification_label"
+            android:permission="android.permission.BIND_NOTIFICATION_LISTENER_SERVICE">
+            <intent-filter>
+                <action android:name="android.service.notification.NotificationListenerService" />
+            </intent-filter>
+        </service>
+
+        <!-- 可选：短信直读（默认关闭，开启后才生效） -->
+        <receiver
+            android:name=".service.SmsRelayReceiver"
+            android:exported="true"
+            android:permission="android.permission.BROADCAST_SMS">
+            <intent-filter android:priority="999">
+                <action android:name="android.provider.Telephony.SMS_RECEIVED" />
+            </intent-filter>
+        </receiver>
+    </application>
+</manifest>

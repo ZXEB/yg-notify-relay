@@ -1,0 +1,28 @@
+[Unit]
+Description=YG Notify Relay (Android 通知转发中继)
+Documentation=https://github.com/ZXEB/yg-notify-relay
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+# 建一个专用低权限用户：sudo useradd --system --home /var/lib/yg-relay --shell /usr/sbin/nologin ygrelay
+User=ygrelay
+Group=ygrelay
+WorkingDirectory=/opt/yg-relay
+ExecStart=/usr/bin/python3 /opt/yg-relay/serve.py --host 0.0.0.0 --port 8787 --data-dir /var/lib/yg-relay
+Restart=on-failure
+RestartSec=3
+Environment=PYTHONUNBUFFERED=1
+# 想用环境变量固定密码就在这里打开（密码请自己换）：
+# Environment=YG_PASSWORD=换成你的密码
+
+# 进程只需要写数据目录，其余只读。
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/var/lib/yg-relay
+
+[Install]
+WantedBy=multi-user.target

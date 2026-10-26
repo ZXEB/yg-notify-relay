@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<full-backup-content>
+    <!-- 服务器地址、上传令牌、消息缓存都属于敏感数据，不参与备份与设备迁移 -->
+    <exclude domain="sharedpref" path="yg_relay_settings.xml" />
+    <exclude domain="sharedpref" path="yg_relay_log.xml" />
+    <exclude domain="file" path="outbox" />
+</full-backup-content>

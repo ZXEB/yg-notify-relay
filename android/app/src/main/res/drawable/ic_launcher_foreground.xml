@@ -1,0 +1,13 @@
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <!-- 纸飞机：寓意「把通知送出去」，全部落在 72dp 安全区内 -->
+    <path
+        android:fillColor="#2F7BFF"
+        android:pathData="M54,54 m-26,0 a26,26 0 1,0 52,0 a26,26 0 1,0 -52,0" />
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M40,54 L70,41 Q74,39.5 72,43 L60,71 Q58,75 56,71 L52,61 L63,46 L50,59 Z" />
+</vector>

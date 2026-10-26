@@ -1,0 +1,13 @@
+{
+  "//": "这是示例结构，不要在部署时照抄。真实文件由 serve.py 首次启动自动生成在数据目录，权限 0600。",
+  "version": 1,
+  "created_at": 1760000000000,
+  "ingest_token": "yg_0000000000000000000000000000000000000000",
+  "session_secret": "0000000000000000000000000000000000000000000000000000000000000000",
+  "password": {
+    "algo": "pbkdf2_sha256",
+    "iterations": 200000,
+    "salt": "AAAAAAAAAAAAAAAAAAAAAA",
+    "hash": "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
+  }
+}
