@@ -1,10 +1,16 @@
 # 本地构建与缓存目录（全部落在本仓库内，不写系统盘）
 .cache/
-data/
+
+# ⚠️ 不要写裸 `data/`：gitignore 的目录模式是任意层级匹配的，
+# 会把 android/app/src/main/kotlin/dev/yg/relay/data/ 这个源码包一起忽略掉，
+# 表现就是本地能编、CI 报 "Unresolved reference 'data'"。只忽略服务器的运行时数据目录：
+/server/data/
+/data/
+
 *.db
 *.db-wal
 *.db-shm
-config.json
+/server/config.json
 
 # Android / Gradle
 android/.gradle/
