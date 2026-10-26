@@ -69,10 +69,17 @@ python3 serve.py --port 8787 --data-dir ./data      # Linux / macOS
 
 ### 3. 装 App
 
-从 Actions 产物下载 `app-debug.apk`（或 `app-release.apk`，取决于仓库是否配置了签名 secret）：
+**推荐**：直接下 Release 里的包
 
-- 仓库页 → **Actions** → 最新一次 `Build Android APK` → **Artifacts** → `yg-relay-apk`
-- 或打一个 `v*` tag，会自动发 Release，里面直接有 APK
+- <https://github.com/ZXEB/yg-notify-relay/releases/latest> → `app-debug.apk`
+
+其它来源：
+
+- 仓库页 → **Actions** → 最新一次 `Build Android APK` → **Artifacts** → `yg-relay-apk`（需登录 GitHub）
+- 自己打 `v*` tag 会再次触发 Release
+
+包名 `dev.yg.relay.debug`，是带调试签名的可安装包（仓库没配签名 secret 时就出这个）。
+想换成正式签名见下面的「签名」小节。
 
 ### 4. 手机端四步
 
@@ -152,6 +159,20 @@ python3 serve.py --port 8787 --data-dir ./data      # Linux / macOS
 
 国产 ROM 的后台限制：本应用不依赖前台服务，系统通常会在有新通知时重新绑定监听服务。若发现
 通知长时间不同步，把「YG 转发」加入电池优化白名单 / 允许自启动（设置页有一键入口）。
+
+## 权限说明
+
+安装包里会看到几条「看起来不该有」的权限，逐条说明来源，避免误会：
+
+| 权限 | 来源 | 用途 |
+|---|---|---|
+| `INTERNET` / `ACCESS_NETWORK_STATE` | 本应用 | 上传、判断当前是否 Wi-Fi |
+| `RECEIVE_SMS` | 本应用（可选功能） | 只在设置里打开「短信直读」后才会处理，默认关闭 |
+| `WAKE_LOCK` / `RECEIVE_BOOT_COMPLETED` / `FOREGROUND_SERVICE` | WorkManager 依赖自动合并 | 系统调度批量上传所需（JobScheduler 唤醒、重启后恢复任务）；本应用自身**不启动任何前台服务** |
+| `*.DYNAMIC_RECEIVER_NOT_EXPORTED_PERMISSION` | AndroidX 自动生成 | 防止动态注册的广播被外部应用调用（安全加固） |
+
+没有读联系人、没有读存储、没有定位、没有读取应用列表（`QUERY_ALL_PACKAGES`）；
+应用范围列表用的是 `<queries>` + `CATEGORY_LAUNCHER` 查询，只能看到桌面有图标的 App。
 
 ## 安全
 
